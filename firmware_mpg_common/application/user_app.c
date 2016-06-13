@@ -61,6 +61,11 @@ static fnCode_type UserApp_StateMachine;            /* The state machine functio
 static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
 static u8 UserApp_CursorPosition;
 static u8 u8TransMessage[8]={00,00,00,00,00,00,00,00};/*message of signal to control airconditional*/
+u8 u8on[]="on";
+u8 u8off[]="off";
+bool boolcallonce=TRUE;
+u8 u8Funtion1Message[]="switch funtio temper";
+u8 u8Funtion2Message[]="wind auto sleep";
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -88,8 +93,6 @@ Promises:
 */
 void UserAppInitialize(void)
 {
-  u8 u8Funtion1Message[]="switch funtio temper";
-  u8 u8Funtion2Message[]="wind auto sleep";
   LCDCommand(LCD_CLEAR_CMD);
   LCDMessage(LINE1_START_ADDR,u8Funtion1Message);
   LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
@@ -146,6 +149,22 @@ State Machine Function Definitions
 static void UserAppSM_Idle(void)
 {
   static u8 u8tempcount=20;
+  while(boolcallonce)
+  {
+   LCDCommand(LCD_CLEAR_CMD);
+   LCDMessage(LINE1_START_ADDR,u8Funtion1Message);
+   LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
+   if(u8TransMessage[0]=0x00)
+   {
+   LCDMessage(LINE2_START_ADDR+16,u8off);
+   }
+   else
+   {
+    LCDMessage(LINE2_START_ADDR+16,u8on);
+   }
+  LCDCommand(LCD_HOME_CMD);
+  boolcallonce=FALSE;
+  }
   u8tempcount--;
   if(u8tempcount==0)
   {
@@ -195,7 +214,7 @@ static void UserAppSM_Idle(void)
       UserApp_CursorPosition = LINE1_END_ADDR-5;
     }
     
-    /* Otherwise just increment one space */
+    /*cursor move*/
     else
     {
       if(UserApp_CursorPosition>=0x40)
@@ -213,44 +232,67 @@ static void UserAppSM_Idle(void)
   {
     ButtonAcknowledge(BUTTON2);
     { 
-        UserApp_StateMachine = UserAppSM_FuntionSelect;
+      switch(UserApp_CursorPosition)
+      {
+        case 0x00:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_SwitchSelect;         
+        break;
+        case 0x07:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_FuntionhSelect;          
+        break;
+        case 0x0e:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_TemperSelect;        
+        break;
+        case 0x40:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_WindSelect;         
+        break;
+        case 0x45:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_AutoSelect;       
+        break;
+        case 0x4a:
+          boolcallonce=TRUE;
+          UserApp_StateMachine = UserAppSM_SleepSelect;
+        break;
+      }
     }
   }
   u8tempcount=20;
   }
 } /* end UserAppSM_Idle() */
-     
 
-/*-------------------------------------------------------------------------------------------------------------------*/
-/* Handle an error */
-static void UserAppSM_Error(void)          
+/*funtion select -------------------------------------- */    
+static void UserAppSM_SwitchSelect(void)
 {
+  u8TransMessage[0]=~u8TransMessage[0];
+  boolcallonce=TRUE;
+  UserApp_StateMachine = UserAppSM_Idle;
   
-} /* end UserAppSM_Error() */
-
-
-static void UserAppSM_FuntionSelect(void)
+}
+/*------------------------------------------------------*/
+static void UserAppSM_FuntionhSelect(void)
 {
   static u8 u8Funtion1SubMenu[]="cool heat comf ";
   static u8 u8Funtion2SubMenu[]="arefaction aeration";
-  /*change the message of signal*/
-  if(UserApp_CursorPosition==0x00)
-  {
-    u8TransMessage[0]=~u8TransMessage[0];
-  }
-  /*funtion submenu*/
-  else if(UserApp_CursorPosition==0x07)
+  while(boolcallonce)
   {
     LCDCommand(LCD_CLEAR_CMD);
     LCDMessage(LINE1_START_ADDR,u8Funtion1SubMenu);
     LCDMessage(LINE2_START_ADDR,u8Funtion2SubMenu);
-    LCDCommand(LCD_HOME_CMD);
-    if(WasButtonPressed(BUTTON1))
+    boolcallonce=FALSE;
+    LCDCommand(LCD_HOME_CMD);  
+    UserApp_CursorPosition=0x00;
+  }
+  if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
     
     /* Handle the two special cases or just the regular case */
-    if(UserApp_CursorPosition == (LINE1_END_ADDR-5))
+    if(UserApp_CursorPosition == (LINE1_END_ADDR-9))
     {
       UserApp_CursorPosition = LINE2_START_ADDR;
     }
@@ -265,11 +307,11 @@ static void UserAppSM_FuntionSelect(void)
     {
       if(UserApp_CursorPosition>=0x40)
       {
-        UserApp_CursorPosition+=5;
+        UserApp_CursorPosition+=11;
       }
       else
       {
-      UserApp_CursorPosition+=11;
+      UserApp_CursorPosition+=5;
       }
     }
      LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
@@ -287,7 +329,7 @@ static void UserAppSM_FuntionSelect(void)
 
     else if (UserApp_CursorPosition == LINE2_START_ADDR)
     {
-      UserApp_CursorPosition = LINE1_END_ADDR-5;
+      UserApp_CursorPosition = LINE1_END_ADDR-9;
     }
     
     /* Otherwise just increment one space */
@@ -295,17 +337,68 @@ static void UserAppSM_FuntionSelect(void)
     {
       if(UserApp_CursorPosition>=0x40)
       {
-        UserApp_CursorPosition-=5;
+        UserApp_CursorPosition-=11;
       }
       else
       {
-      UserApp_CursorPosition-=11;
+      UserApp_CursorPosition-=5;
       }
     }
      LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
   }
+  if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    {
+      switch(UserApp_CursorPosition)
+      {
+        case 0x00:
+          u8TransMessage[1]=00;
+          break;
+        case 0x05:
+          u8TransMessage[1]=01;
+          break;
+        case 0x0a:
+          u8TransMessage[1]=02;
+          break;
+        case 0x40:
+          u8TransMessage[1]=03;
+          break;
+        case 0x4b:
+          u8TransMessage[1]=04;
+          break;
+      }
+      boolcallonce=TRUE;
+      UserApp_StateMachine = UserAppSM_Idle;
+    }
   }
 }
+/*------------------------------------------------------*/
+static void UserAppSM_TemperSelect(void)
+{
+  
+}
+/*------------------------------------------------------*/
+static void UserAppSM_WindSelect(void)
+{
+  
+}
+/*------------------------------------------------------*/
+static void UserAppSM_AutoSelect(void)
+{
+  
+}
+/*------------------------------------------------------*/
+static void UserAppSM_SleepSelect(void)
+{
+  
+}
+/*-------------------------------------------------------------------------------------------------------------------*/
+/* Handle an error */
+static void UserAppSM_Error(void)          
+{
+  
+} /* end UserAppSM_Error() */
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* State to sit in if init failed */
