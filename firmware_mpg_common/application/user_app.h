@@ -55,11 +55,9 @@ void UserAppRunActiveState(void);
 State Machine Declarations
 ***********************************************************************************************************************/
 static void UserAppSM_Idle(void);    
-
 static void UserAppSM_Error(void);         
-static void UserAppSM_FailedInit(void);        
-
-
+static void UserAppSM_FailedInit(void);  
+static void UserAppSM_FuntionSelect(void);
 #endif /* __USER_APP_H */
 
 

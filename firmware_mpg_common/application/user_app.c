@@ -59,8 +59,8 @@ Variable names shall start with "UserApp_" and be declared as static.
 ***********************************************************************************************************************/
 static fnCode_type UserApp_StateMachine;            /* The state machine function pointer */
 static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
-
-
+static u8 UserApp_CursorPosition;
+static u8 u8TransMessage[8]={00,00,00,00,00,00,00,00};/*message of signal to control airconditional*/
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -88,7 +88,15 @@ Promises:
 */
 void UserAppInitialize(void)
 {
-  
+  u8 u8Funtion1Message[]="switch funtio temper";
+  u8 u8Funtion2Message[]="wind auto sleep";
+  LCDCommand(LCD_CLEAR_CMD);
+  LCDMessage(LINE1_START_ADDR,u8Funtion1Message);
+  LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
+  LCDCommand(LCD_HOME_CMD);
+  LCDCommand(LCD_DISPLAY_CMD | LCD_DISPLAY_ON | LCD_DISPLAY_CURSOR | LCD_DISPLAY_BLINK);
+  UserApp_CursorPosition = LINE1_START_ADDR;
+
   /* If good initialization, set state to Idle */
   if( 1 )
   {
@@ -137,7 +145,79 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
+  static u8 u8tempcount=20;
+  u8tempcount--;
+  if(u8tempcount==0)
+  {
+  //button 1  move cursor forward ------------------------------------------
+  if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1);
     
+    /* Handle the two special cases or just the regular case */
+    if(UserApp_CursorPosition == (LINE1_END_ADDR-5))
+    {
+      UserApp_CursorPosition = LINE2_START_ADDR;
+    }
+
+    else if (UserApp_CursorPosition == (LINE2_END_ADDR-9))
+    {
+      UserApp_CursorPosition = LINE1_START_ADDR;
+    }
+    
+    /* Otherwise just increment one space */
+    else
+    {
+      if(UserApp_CursorPosition>=0x40)
+      {
+        UserApp_CursorPosition+=5;
+      }
+      else
+      {
+      UserApp_CursorPosition+=7;
+      }
+    }
+     LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
+  }
+    //button 0 move cursor left ---------------------------------------------
+    if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    
+    /* Handle the two special cases or just the regular case */
+    if(UserApp_CursorPosition == LINE1_START_ADDR)
+    {
+      UserApp_CursorPosition = LINE2_END_ADDR-9;
+    }
+
+    else if (UserApp_CursorPosition == LINE2_START_ADDR)
+    {
+      UserApp_CursorPosition = LINE1_END_ADDR-5;
+    }
+    
+    /* Otherwise just increment one space */
+    else
+    {
+      if(UserApp_CursorPosition>=0x40)
+      {
+        UserApp_CursorPosition-=5;
+      }
+      else
+      {
+      UserApp_CursorPosition-=7;
+      }
+    }
+     LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
+  }
+  if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    { 
+        UserApp_StateMachine = UserAppSM_FuntionSelect;
+    }
+  }
+  u8tempcount=20;
+  }
 } /* end UserAppSM_Idle() */
      
 
@@ -148,6 +228,84 @@ static void UserAppSM_Error(void)
   
 } /* end UserAppSM_Error() */
 
+
+static void UserAppSM_FuntionSelect(void)
+{
+  static u8 u8Funtion1SubMenu[]="cool heat comf ";
+  static u8 u8Funtion2SubMenu[]="arefaction aeration";
+  /*change the message of signal*/
+  if(UserApp_CursorPosition==0x00)
+  {
+    u8TransMessage[0]=~u8TransMessage[0];
+  }
+  /*funtion submenu*/
+  else if(UserApp_CursorPosition==0x07)
+  {
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR,u8Funtion1SubMenu);
+    LCDMessage(LINE2_START_ADDR,u8Funtion2SubMenu);
+    LCDCommand(LCD_HOME_CMD);
+    if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1);
+    
+    /* Handle the two special cases or just the regular case */
+    if(UserApp_CursorPosition == (LINE1_END_ADDR-5))
+    {
+      UserApp_CursorPosition = LINE2_START_ADDR;
+    }
+
+    else if (UserApp_CursorPosition == (LINE2_END_ADDR-8))
+    {
+      UserApp_CursorPosition = LINE1_START_ADDR;
+    }
+    
+    /* Otherwise just increment one space */
+    else
+    {
+      if(UserApp_CursorPosition>=0x40)
+      {
+        UserApp_CursorPosition+=5;
+      }
+      else
+      {
+      UserApp_CursorPosition+=11;
+      }
+    }
+     LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
+  }
+    //button 0 move cursor left ---------------------------------------------
+    if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    
+    /* Handle the two special cases or just the regular case */
+    if(UserApp_CursorPosition == LINE1_START_ADDR)
+    {
+      UserApp_CursorPosition = LINE2_END_ADDR-8;
+    }
+
+    else if (UserApp_CursorPosition == LINE2_START_ADDR)
+    {
+      UserApp_CursorPosition = LINE1_END_ADDR-5;
+    }
+    
+    /* Otherwise just increment one space */
+    else
+    {
+      if(UserApp_CursorPosition>=0x40)
+      {
+        UserApp_CursorPosition-=5;
+      }
+      else
+      {
+      UserApp_CursorPosition-=11;
+      }
+    }
+     LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
+  }
+  }
+}
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* State to sit in if init failed */
