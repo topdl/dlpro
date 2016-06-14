@@ -16221,6 +16221,8 @@ Type Definitions
 /**********************************************************************************************************************
 Constants / Definitions
 **********************************************************************************************************************/
+/* Required constants for ANT channel configuration */
+#line 41 "F:\\\321\247\317\260\\EiE\\eiegit\\dlpro\\firmware_mpg_common\\application\\user_app.h"
 
 
 /**********************************************************************************************************************
@@ -17402,6 +17404,13 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
+extern AntSetupDataType G_stAntSetupData;                         /* From ant.c */
+
+extern u32 G_u32AntApiCurrentDataTimeStamp;                       /* From ant_api.c */
+extern AntApplicationMessageType G_eAntApiCurrentMessageClass;    /* From ant_api.c */
+extern u8 G_au8AntApiCurrentData[(u8)8];  /* From ant_api.c */
+
+
 
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
@@ -17410,7 +17419,7 @@ Variable names shall start with "UserApp_" and be declared as static.
 static fnCode_type UserApp_StateMachine;            /* The state machine function pointer */
 static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
 static u8 UserApp_CursorPosition;
-static u8 u8TransMessage[8]={00,00,00,00,00,00,00,00};/*message of signal to control airconditional*/
+static u8 u8TransMessage[8]={0xff,00,16,01,00,0xff,00,00};/*message of signal to control airconditional*/
 u8 u8on[]="on";
 u8 u8off[]="off";
 bool boolcallonce=TRUE;
@@ -17443,16 +17452,25 @@ Promises:
 */
 void UserAppInitialize(void)
 {
-  LCDCommand((u8)0x01);
-  LCDMessage((u8)0x00,u8Funtion1Message);
-  LCDMessage((u8)0x40,u8Funtion2Message);
+  /* Configure ANT for this application */
+  G_stAntSetupData.AntChannel          = (u8)0;
+  G_stAntSetupData.AntSerialLo         = (u8)0x34;
+  G_stAntSetupData.AntSerialHi         = (u8)0x12;
+  G_stAntSetupData.AntDeviceType       = (u8)1;
+  G_stAntSetupData.AntTransmissionType = (u8)1;
+  G_stAntSetupData.AntChannelPeriodLo  = (u8)0x00;
+  G_stAntSetupData.AntChannelPeriodHi  = (u8)0x20;
+  G_stAntSetupData.AntFrequency        = (u8)50;
+  G_stAntSetupData.AntTxPower          = ((UCHAR)0x03);
+
   LCDCommand((u8)0x02);
   LCDCommand((u8)0x08 | (u8)0x04 | (u8)0x02 | (u8)0x01);
   UserApp_CursorPosition = (u8)0x00;
 
   /* If good initialization, set state to Idle */
-  if( 1 )
+  if( AntChannelConfig(TRUE) )
   {
+    AntOpenChannel();
     UserApp_StateMachine = UserAppSM_Idle;
   }
   else
@@ -17460,6 +17478,7 @@ void UserAppInitialize(void)
     /* The task isn't properly initialized, so shut it down and don't run */
     UserApp_StateMachine = UserAppSM_FailedInit;
   }
+
 
 } /* end UserAppInitialize() */
 
@@ -17498,13 +17517,13 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8tempcount=20;
   while(boolcallonce)
   {
+   UserApp_CursorPosition = (u8)0x00; 
    LCDCommand((u8)0x01);
    LCDMessage((u8)0x00,u8Funtion1Message);
    LCDMessage((u8)0x40,u8Funtion2Message);
-   if(u8TransMessage[0]=0x00)
+   if(u8TransMessage[0]==0xff)
    {
    LCDMessage((u8)0x40+16,u8off);
    }
@@ -17515,9 +17534,6 @@ static void UserAppSM_Idle(void)
   LCDCommand((u8)0x02);
   boolcallonce=FALSE;
   }
-  u8tempcount--;
-  if(u8tempcount==0)
-  {
   //button 1  move cursor forward ------------------------------------------
   if(WasButtonPressed((u32)1))
   {
@@ -17611,13 +17627,26 @@ static void UserAppSM_Idle(void)
       }
     }
   }
-  u8tempcount=20;
-  }
+  if( AntReadData() )
+  {
+     /* New data message: check what it is */
+    if(G_eAntApiCurrentMessageClass == ANT_DATA)
+    {
+      /* We got some data */
+    }
+    else if(G_eAntApiCurrentMessageClass == ANT_TICK)
+    {
+     /* A channel period has gone by: typically this is when new data should be queued to be sent */
+      AntQueueBroadcastMessage(u8TransMessage);
+    }
+  } /* end AntReadData() */
+
 } /* end UserAppSM_Idle() */
 
 /*funtion select -------------------------------------- */    
 static void UserAppSM_SwitchSelect(void)
 {
+  
   u8TransMessage[0]=~u8TransMessage[0];
   boolcallonce=TRUE;
   UserApp_StateMachine = UserAppSM_Idle;
@@ -17724,24 +17753,153 @@ static void UserAppSM_FuntionhSelect(void)
   }
 }
 /*------------------------------------------------------*/
+/*temprature adjust*/
 static void UserAppSM_TemperSelect(void)
-{
-  
+{ 
+
+  u8 u8TMessage[]="temprature: ";
+  static u8 u8TCounterMessage[3]={'1','6','\0'};
+  if(boolcallonce)
+  {
+    LCDCommand((u8)0x01);
+    LCDMessage((u8)0x00,u8TMessage);
+    LCDMessage((u8)0x40,u8TCounterMessage);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed((u32)1))
+  {
+    ButtonAcknowledge((u32)1); 
+    u8TCounterMessage[1]++;
+    if(u8TCounterMessage[1]==0x3a)
+    {
+      u8TCounterMessage[1]='0';
+      u8TCounterMessage[0]++;
+    }
+    LCDMessage((u8)0x40,u8TCounterMessage);
+  }
+  if(WasButtonPressed((u32)0))
+  {
+    ButtonAcknowledge((u32)0);
+    u8TCounterMessage[1]--;
+    if(u8TCounterMessage[1]==0x2f)
+    {
+      u8TCounterMessage[1]=0x39;
+      u8TCounterMessage[0]--;
+    }
+    LCDMessage((u8)0x40,u8TCounterMessage);
+  }
+  //confirm order
+  if(WasButtonPressed((u32)2))
+  {
+    ButtonAcknowledge((u32)2);
+ //trsns temprature
+    u8TransMessage[2]=(u8TCounterMessage[0]-0x30)*10+u8TCounterMessage[1]-0x30;
+    boolcallonce=TRUE;
+    UserApp_StateMachine = UserAppSM_Idle;
+  }
+
 }
 /*------------------------------------------------------*/
 static void UserAppSM_WindSelect(void)
 {
-  
+  u8 u8WMessage[]="windspeed :";
+ static u8 u8WSpeed[]="1";
+  while(boolcallonce)
+  {
+    LCDCommand((u8)0x01);
+    LCDMessage((u8)0x00,u8WMessage);
+    LCDMessage((u8)0x40,u8WSpeed);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed((u32)1))
+  {
+    ButtonAcknowledge((u32)1);
+    if(u8WSpeed[0]==0x33)
+    {
+      u8WSpeed[0]=0x31;
+    }
+    else
+    {
+    u8WSpeed[0]++;
+    }
+    LCDMessage((u8)0x40,u8WSpeed);
+  }
+  if(WasButtonPressed((u32)0))
+  {
+    ButtonAcknowledge((u32)0);
+    if(u8WSpeed[0]==0x31)
+    {
+      u8WSpeed[0]=0x33;
+    }
+    else
+    {
+      u8WSpeed[0]--;
+    }
+    LCDMessage((u8)0x40,u8WSpeed);
+  }
+  if(WasButtonPressed((u32)2))
+  {
+    ButtonAcknowledge((u32)2);
+    {
+      u8TransMessage[3]=u8WSpeed[0];
+      boolcallonce=TRUE;
+      UserApp_StateMachine = UserAppSM_Idle;
+    }
+  }
 }
 /*------------------------------------------------------*/
 static void UserAppSM_AutoSelect(void)
 {
-  
+  u8 u8timing[]="timing:";
+  static u8 u8timelast[3]={'0','0','\0'};
+  if(boolcallonce)
+  {
+    LCDCommand((u8)0x01);
+    LCDMessage((u8)0x00,u8timing);
+    LCDMessage((u8)0x40,u8timelast);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed((u32)1))
+  {
+    ButtonAcknowledge((u32)1); 
+    u8timelast[1]++;
+    if(u8timelast[1]==0x3a)
+    {
+      u8timelast[1]='0';
+      u8timelast[0]++;
+    }
+    LCDMessage((u8)0x40,u8timelast);
+  }
+  if(WasButtonPressed((u32)0))
+  {
+    ButtonAcknowledge((u32)0);
+    u8timelast[1]--;
+    if(u8timelast[1]==0x2f)
+    {
+      u8timelast[1]=0x39;
+      u8timelast[0]--;
+    }
+    LCDMessage((u8)0x40,u8timelast);
+  }
+ if(WasButtonPressed((u32)2))
+  {
+    ButtonAcknowledge((u32)2);
+    {
+      u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;;
+      boolcallonce=TRUE;
+      UserApp_StateMachine = UserAppSM_Idle;
+    }
+  } 
 }
 /*------------------------------------------------------*/
 static void UserAppSM_SleepSelect(void)
 {
-  
+  u8TransMessage[5]=~u8TransMessage[5];
+   LedToggle(LCD_RED);
+   LedToggle(LCD_GREEN);
+   LedToggle(LCD_BLUE);
+  boolcallonce=TRUE;
+  UserApp_StateMachine = UserAppSM_Idle;
 }
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error */

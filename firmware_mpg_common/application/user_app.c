@@ -52,6 +52,13 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
+extern AntSetupDataType G_stAntSetupData;                         /* From ant.c */
+
+extern u32 G_u32AntApiCurrentDataTimeStamp;                       /* From ant_api.c */
+extern AntApplicationMessageType G_eAntApiCurrentMessageClass;    /* From ant_api.c */
+extern u8 G_au8AntApiCurrentData[ANT_APPLICATION_MESSAGE_BYTES];  /* From ant_api.c */
+
+
 
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
@@ -60,7 +67,7 @@ Variable names shall start with "UserApp_" and be declared as static.
 static fnCode_type UserApp_StateMachine;            /* The state machine function pointer */
 static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
 static u8 UserApp_CursorPosition;
-static u8 u8TransMessage[8]={00,00,00,00,00,00,00,00};/*message of signal to control airconditional*/
+static u8 u8TransMessage[8]={0xff,00,16,01,00,0xff,00,00};/*message of signal to control airconditional*/
 u8 u8on[]="on";
 u8 u8off[]="off";
 bool boolcallonce=TRUE;
@@ -93,16 +100,25 @@ Promises:
 */
 void UserAppInitialize(void)
 {
-  LCDCommand(LCD_CLEAR_CMD);
-  LCDMessage(LINE1_START_ADDR,u8Funtion1Message);
-  LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
+  /* Configure ANT for this application */
+  G_stAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
+  G_stAntSetupData.AntSerialLo         = ANT_SERIAL_LO_USERAPP;
+  G_stAntSetupData.AntSerialHi         = ANT_SERIAL_HI_USERAPP;
+  G_stAntSetupData.AntDeviceType       = ANT_DEVICE_TYPE_USERAPP;
+  G_stAntSetupData.AntTransmissionType = ANT_TRANSMISSION_TYPE_USERAPP;
+  G_stAntSetupData.AntChannelPeriodLo  = ANT_CHANNEL_PERIOD_LO_USERAPP;
+  G_stAntSetupData.AntChannelPeriodHi  = ANT_CHANNEL_PERIOD_HI_USERAPP;
+  G_stAntSetupData.AntFrequency        = ANT_FREQUENCY_USERAPP;
+  G_stAntSetupData.AntTxPower          = ANT_TX_POWER_USERAPP;
+
   LCDCommand(LCD_HOME_CMD);
   LCDCommand(LCD_DISPLAY_CMD | LCD_DISPLAY_ON | LCD_DISPLAY_CURSOR | LCD_DISPLAY_BLINK);
   UserApp_CursorPosition = LINE1_START_ADDR;
 
   /* If good initialization, set state to Idle */
-  if( 1 )
+  if( AntChannelConfig(ANT_MASTER) )
   {
+    AntOpenChannel();
     UserApp_StateMachine = UserAppSM_Idle;
   }
   else
@@ -110,6 +126,7 @@ void UserAppInitialize(void)
     /* The task isn't properly initialized, so shut it down and don't run */
     UserApp_StateMachine = UserAppSM_FailedInit;
   }
+
 
 } /* end UserAppInitialize() */
 
@@ -148,13 +165,13 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8tempcount=20;
   while(boolcallonce)
   {
+   UserApp_CursorPosition = LINE1_START_ADDR; 
    LCDCommand(LCD_CLEAR_CMD);
    LCDMessage(LINE1_START_ADDR,u8Funtion1Message);
    LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
-   if(u8TransMessage[0]=0x00)
+   if(u8TransMessage[0]==0xff)
    {
    LCDMessage(LINE2_START_ADDR+16,u8off);
    }
@@ -165,9 +182,6 @@ static void UserAppSM_Idle(void)
   LCDCommand(LCD_HOME_CMD);
   boolcallonce=FALSE;
   }
-  u8tempcount--;
-  if(u8tempcount==0)
-  {
   //button 1  move cursor forward ------------------------------------------
   if(WasButtonPressed(BUTTON1))
   {
@@ -261,13 +275,26 @@ static void UserAppSM_Idle(void)
       }
     }
   }
-  u8tempcount=20;
-  }
+  if( AntReadData() )
+  {
+     /* New data message: check what it is */
+    if(G_eAntApiCurrentMessageClass == ANT_DATA)
+    {
+      /* We got some data */
+    }
+    else if(G_eAntApiCurrentMessageClass == ANT_TICK)
+    {
+     /* A channel period has gone by: typically this is when new data should be queued to be sent */
+      AntQueueBroadcastMessage(u8TransMessage);
+    }
+  } /* end AntReadData() */
+
 } /* end UserAppSM_Idle() */
 
 /*funtion select -------------------------------------- */    
 static void UserAppSM_SwitchSelect(void)
 {
+  
   u8TransMessage[0]=~u8TransMessage[0];
   boolcallonce=TRUE;
   UserApp_StateMachine = UserAppSM_Idle;
@@ -374,24 +401,153 @@ static void UserAppSM_FuntionhSelect(void)
   }
 }
 /*------------------------------------------------------*/
+/*temprature adjust*/
 static void UserAppSM_TemperSelect(void)
-{
-  
+{ 
+
+  u8 u8TMessage[]="temprature: ";
+  static u8 u8TCounterMessage[3]={'1','6','\0'};
+  if(boolcallonce)
+  {
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR,u8TMessage);
+    LCDMessage(LINE2_START_ADDR,u8TCounterMessage);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1); 
+    u8TCounterMessage[1]++;
+    if(u8TCounterMessage[1]==0x3a)
+    {
+      u8TCounterMessage[1]='0';
+      u8TCounterMessage[0]++;
+    }
+    LCDMessage(LINE2_START_ADDR,u8TCounterMessage);
+  }
+  if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    u8TCounterMessage[1]--;
+    if(u8TCounterMessage[1]==0x2f)
+    {
+      u8TCounterMessage[1]=0x39;
+      u8TCounterMessage[0]--;
+    }
+    LCDMessage(LINE2_START_ADDR,u8TCounterMessage);
+  }
+  //confirm order
+  if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+ //trsns temprature
+    u8TransMessage[2]=(u8TCounterMessage[0]-0x30)*10+u8TCounterMessage[1]-0x30;
+    boolcallonce=TRUE;
+    UserApp_StateMachine = UserAppSM_Idle;
+  }
+
 }
 /*------------------------------------------------------*/
 static void UserAppSM_WindSelect(void)
 {
-  
+  u8 u8WMessage[]="windspeed :";
+ static u8 u8WSpeed[]="1";
+  while(boolcallonce)
+  {
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR,u8WMessage);
+    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1);
+    if(u8WSpeed[0]==0x33)
+    {
+      u8WSpeed[0]=0x31;
+    }
+    else
+    {
+    u8WSpeed[0]++;
+    }
+    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+  }
+  if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    if(u8WSpeed[0]==0x31)
+    {
+      u8WSpeed[0]=0x33;
+    }
+    else
+    {
+      u8WSpeed[0]--;
+    }
+    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+  }
+  if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    {
+      u8TransMessage[3]=u8WSpeed[0];
+      boolcallonce=TRUE;
+      UserApp_StateMachine = UserAppSM_Idle;
+    }
+  }
 }
 /*------------------------------------------------------*/
 static void UserAppSM_AutoSelect(void)
 {
-  
+  u8 u8timing[]="timing:";
+  static u8 u8timelast[3]={'0','0','\0'};
+  if(boolcallonce)
+  {
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR,u8timing);
+    LCDMessage(LINE2_START_ADDR,u8timelast);
+    boolcallonce=FALSE;
+  }
+  if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1); 
+    u8timelast[1]++;
+    if(u8timelast[1]==0x3a)
+    {
+      u8timelast[1]='0';
+      u8timelast[0]++;
+    }
+    LCDMessage(LINE2_START_ADDR,u8timelast);
+  }
+  if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    u8timelast[1]--;
+    if(u8timelast[1]==0x2f)
+    {
+      u8timelast[1]=0x39;
+      u8timelast[0]--;
+    }
+    LCDMessage(LINE2_START_ADDR,u8timelast);
+  }
+ if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    {
+      u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;;
+      boolcallonce=TRUE;
+      UserApp_StateMachine = UserAppSM_Idle;
+    }
+  } 
 }
 /*------------------------------------------------------*/
 static void UserAppSM_SleepSelect(void)
 {
-  
+  u8TransMessage[5]=~u8TransMessage[5];
+   LedToggle(LCD_RED);
+   LedToggle(LCD_GREEN);
+   LedToggle(LCD_BLUE);
+  boolcallonce=TRUE;
+  UserApp_StateMachine = UserAppSM_Idle;
 }
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error */
