@@ -173,7 +173,7 @@ static void UserAppSM_Idle(void)
    LCDMessage(LINE2_START_ADDR,u8Funtion2Message);
    if(u8TransMessage[0]==0xff)
    {
-   LCDMessage(LINE2_START_ADDR+16,u8off);
+     LCDMessage(LINE2_START_ADDR+16,u8off);
    }
    else
    {
@@ -207,7 +207,7 @@ static void UserAppSM_Idle(void)
       }
       else
       {
-      UserApp_CursorPosition+=7;
+        UserApp_CursorPosition+=7;
       }
     }
      LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
@@ -274,6 +274,10 @@ static void UserAppSM_Idle(void)
           boolcallonce=TRUE;
           UserApp_StateMachine = UserAppSM_SleepSelect;
         break;
+       default:
+         LCDCommand(LCD_CLEAR_CMD);
+         LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
+         UserApp_CursorPosition = LINE1_START_ADDR;
       }
     }
   }
@@ -433,6 +437,7 @@ static void UserAppSM_TemperSelect(void)
     LCDMessage(LINE2_START_ADDR,u8TCounterMessage);
     boolcallonce=FALSE;
   }
+  //button 0and 1 to change temperature
   if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1); 
@@ -459,7 +464,7 @@ static void UserAppSM_TemperSelect(void)
   if(WasButtonPressed(BUTTON2))
   {
     ButtonAcknowledge(BUTTON2);
- //trsns temprature
+ //change message and return to idle
     u8TransMessage[2]=(u8TCounterMessage[0]-0x30)*10+u8TCounterMessage[1]-0x30;
     boolcallonce=TRUE;
     UserApp_StateMachine = UserAppSM_Idle;
@@ -474,12 +479,12 @@ static void UserAppSM_WindSelect(void)
 {
   u8 u8WMessage[]="windspeed :";
   //buffer to save windspeed
- static u8 u8WSpeed[]="1";
+ static u8 u8WindSpeed[]="1";
   while(boolcallonce)
   {
     LCDCommand(LCD_CLEAR_CMD);
     LCDMessage(LINE1_START_ADDR,u8WMessage);
-    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+    LCDMessage(LINE2_START_ADDR,u8WindSpeed);
     boolcallonce=FALSE;
   }
   /*button0 and 1 to change windspeed ----------------
@@ -488,34 +493,35 @@ static void UserAppSM_WindSelect(void)
   if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
-    if(u8WSpeed[0]==0x33)
+    if(u8WindSpeed[0]==0x33)
     {
-      u8WSpeed[0]=0x31;
+      u8WindSpeed[0]=0x31;
     }
     else
     {
-    u8WSpeed[0]++;
+    u8WindSpeed[0]++;
     }
-    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+    LCDMessage(LINE2_START_ADDR,u8WindSpeed);
   }
   if(WasButtonPressed(BUTTON0))
   {
     ButtonAcknowledge(BUTTON0);
-    if(u8WSpeed[0]==0x31)
+    if(u8WindSpeed[0]==0x31)
     {
-      u8WSpeed[0]=0x33;
+      u8WindSpeed[0]=0x33;
     }
     else
     {
-      u8WSpeed[0]--;
+      u8WindSpeed[0]--;
     }
-    LCDMessage(LINE2_START_ADDR,u8WSpeed);
+    LCDMessage(LINE2_START_ADDR,u8WindSpeed);
   }
+  //change message and return to idle
   if(WasButtonPressed(BUTTON2))
   {
     ButtonAcknowledge(BUTTON2);
     {
-      u8TransMessage[3]=u8WSpeed[0];
+      u8TransMessage[3]=u8WindSpeed[0];
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }
@@ -528,6 +534,7 @@ static void UserAppSM_AutoSelect(void)
 {
   u8 u8timing[]="timing:";
   static u8 u8timelast[3]={'0','0','\0'};
+  //initialize
   if(boolcallonce)
   {
     LCDCommand(LCD_CLEAR_CMD);
@@ -535,6 +542,7 @@ static void UserAppSM_AutoSelect(void)
     LCDMessage(LINE2_START_ADDR,u8timelast);
     boolcallonce=FALSE;
   }
+  /**/
   if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1); 
@@ -592,8 +600,6 @@ static void UserAppSM_FailedInit(void)
 {
     
 } /* end UserAppSM_FailedInit() */
-
-
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* End of File                                                                                                        */
 /*--------------------------------------------------------------------------------------------------------------------*/
