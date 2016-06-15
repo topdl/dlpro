@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# IAR ANSI C/C++ Compiler V7.20.1.7305/W32 for ARM        15/Jun/2016  10:32:29
+# IAR ANSI C/C++ Compiler V7.20.1.7305/W32 for ARM        15/Jun/2016  16:14:20
 # Copyright 1999-2014 IAR Systems AB.
 #
 #    Cpu mode     =  thumb
@@ -215,11 +215,11 @@ F:\ѧϰ\EiE\eiegit\dlpro\firmware_mpg_common\application\user_app.c
    \   00000004   0x.... 0x....      LDR.W    R1,??DataTable8
    \   00000008   0x7008             STRB     R0,[R1, #+0]
     105            G_stAntSetupData.AntSerialLo         = ANT_SERIAL_LO_USERAPP;
-   \   0000000A   0x2034             MOVS     R0,#+52
+   \   0000000A   0x206B             MOVS     R0,#+107
    \   0000000C   0x.... 0x....      LDR.W    R1,??DataTable8
    \   00000010   0x70C8             STRB     R0,[R1, #+3]
     106            G_stAntSetupData.AntSerialHi         = ANT_SERIAL_HI_USERAPP;
-   \   00000012   0x2012             MOVS     R0,#+18
+   \   00000012   0x2019             MOVS     R0,#+25
    \   00000014   0x.... 0x....      LDR.W    R1,??DataTable8
    \   00000018   0x7108             STRB     R0,[R1, #+4]
     107            G_stAntSetupData.AntDeviceType       = ANT_DEVICE_TYPE_USERAPP;

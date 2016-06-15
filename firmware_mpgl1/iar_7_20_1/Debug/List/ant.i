@@ -16235,7 +16235,7 @@ static void UserAppSM_Idle(void);
 static void UserAppSM_Error(void);         
 static void UserAppSM_FailedInit(void);  
 static void UserAppSM_SwitchSelect(void);
-static void UserAppSM_FuntionhSelect(void);
+static void UserAppSM_FuntionSelect(void);
 static void UserAppSM_TemperSelect(void);
 static void UserAppSM_WindSelect(void);
 static void UserAppSM_AutoSelect(void);

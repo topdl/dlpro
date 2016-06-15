@@ -17454,8 +17454,8 @@ void UserAppInitialize(void)
 {
   /* Configure ANT for this application */
   G_stAntSetupData.AntChannel          = (u8)0;
-  G_stAntSetupData.AntSerialLo         = (u8)0x34;
-  G_stAntSetupData.AntSerialHi         = (u8)0x12;
+  G_stAntSetupData.AntSerialLo         = (u8)0x6B;
+  G_stAntSetupData.AntSerialHi         = (u8)0x19;
   G_stAntSetupData.AntDeviceType       = (u8)1;
   G_stAntSetupData.AntTransmissionType = (u8)1;
   G_stAntSetupData.AntChannelPeriodLo  = (u8)0x00;
