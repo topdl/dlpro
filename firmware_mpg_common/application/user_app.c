@@ -521,7 +521,7 @@ static void UserAppSM_WindSelect(void)
   {
     ButtonAcknowledge(BUTTON2);
     {
-      u8TransMessage[3]=u8WindSpeed[0];
+      u8TransMessage[3]=u8WindSpeed[0]-0x30;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }
