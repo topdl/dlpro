@@ -162,9 +162,9 @@ State Machine Function Definitions
 **********************************************************************************************************************/
 
 /*-------------------------------------------------------------------------------------------------------------------*/
-/* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
+  //idle state initialization 
   while(boolcallonce)
   {
    UserApp_CursorPosition = LINE1_START_ADDR; 
@@ -198,7 +198,7 @@ static void UserAppSM_Idle(void)
       UserApp_CursorPosition = LINE1_START_ADDR;
     }
     
-    /* Otherwise just increment one space */
+    /* Otherwise just increment  */
     else
     {
       if(UserApp_CursorPosition>=0x40)
@@ -242,10 +242,12 @@ static void UserAppSM_Idle(void)
     }
      LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
   }
+  /*button2 confirm the selection*/
   if(WasButtonPressed(BUTTON2))
   {
     ButtonAcknowledge(BUTTON2);
     { 
+      /*enter different modules*/
       switch(UserApp_CursorPosition)
       {
         case 0x00:
@@ -254,7 +256,7 @@ static void UserAppSM_Idle(void)
         break;
         case 0x07:
           boolcallonce=TRUE;
-          UserApp_StateMachine = UserAppSM_FuntionhSelect;          
+          UserApp_StateMachine = UserAppSM_FuntionSelect;          
         break;
         case 0x0e:
           boolcallonce=TRUE;
@@ -275,6 +277,7 @@ static void UserAppSM_Idle(void)
       }
     }
   }
+  /*transmit message to slave*/
   if( AntReadData() )
   {
      /* New data message: check what it is */
@@ -291,7 +294,8 @@ static void UserAppSM_Idle(void)
 
 } /* end UserAppSM_Idle() */
 
-/*funtion select -------------------------------------- */    
+/*  switch moudle---------------------------------------*/
+/*----------------------------------------------------- */    
 static void UserAppSM_SwitchSelect(void)
 {
   
@@ -300,11 +304,14 @@ static void UserAppSM_SwitchSelect(void)
   UserApp_StateMachine = UserAppSM_Idle;
   
 }
+
+/*funtion select moudle---------------------------------*/
 /*------------------------------------------------------*/
-static void UserAppSM_FuntionhSelect(void)
+static void UserAppSM_FuntionSelect(void)
 {
   static u8 u8Funtion1SubMenu[]="cool heat comf ";
   static u8 u8Funtion2SubMenu[]="arefaction aeration";
+  /*moudle initialize*/
   while(boolcallonce)
   {
     LCDCommand(LCD_CLEAR_CMD);
@@ -314,6 +321,8 @@ static void UserAppSM_FuntionhSelect(void)
     LCDCommand(LCD_HOME_CMD);  
     UserApp_CursorPosition=0x00;
   }
+  /*move cursor to select different funtions---------------------
+  and button1 moves cursor to right button2 moves cursor to left*/
   if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
@@ -330,12 +339,15 @@ static void UserAppSM_FuntionhSelect(void)
     }
     
     /* Otherwise just increment one space */
+    /*the length of cursor moved decided by dinfferent strings*/
     else
     {
+      //the cursor is in the second line
       if(UserApp_CursorPosition>=0x40)
       {
         UserApp_CursorPosition+=11;
       }
+      //the cursor is in first line
       else
       {
       UserApp_CursorPosition+=5;
@@ -359,13 +371,15 @@ static void UserAppSM_FuntionhSelect(void)
       UserApp_CursorPosition = LINE1_END_ADDR-9;
     }
     
-    /* Otherwise just increment one space */
+    /* Otherwise just increment  */
     else
     {
+      //the cursor is in the second line
       if(UserApp_CursorPosition>=0x40)
       {
         UserApp_CursorPosition-=11;
       }
+      //the cursor is in first line
       else
       {
       UserApp_CursorPosition-=5;
@@ -373,12 +387,14 @@ static void UserAppSM_FuntionhSelect(void)
     }
      LCDCommand(LCD_ADDRESS_CMD | UserApp_CursorPosition);
   }
+  /*confirm the selection and change the message */
   if(WasButtonPressed(BUTTON2))
   {
     ButtonAcknowledge(BUTTON2);
     {
       switch(UserApp_CursorPosition)
       {
+        //decide the message content on the basis of cursor position
         case 0x00:
           u8TransMessage[1]=00;
           break;
@@ -399,14 +415,17 @@ static void UserAppSM_FuntionhSelect(void)
       UserApp_StateMachine = UserAppSM_Idle;
     }
   }
-}
-/*------------------------------------------------------*/
+}/*end moudle*/
+
 /*temprature adjust*/
+/*------------------------------------------------------*/
 static void UserAppSM_TemperSelect(void)
 { 
 
   u8 u8TMessage[]="temprature: ";
+  //buffer to save temperature
   static u8 u8TCounterMessage[3]={'1','6','\0'};
+  //initialization
   if(boolcallonce)
   {
     LCDCommand(LCD_CLEAR_CMD);
@@ -446,11 +465,15 @@ static void UserAppSM_TemperSelect(void)
     UserApp_StateMachine = UserAppSM_Idle;
   }
 
-}
+}/*end moudle */
+
+
+/*windspeed moudle*/
 /*------------------------------------------------------*/
 static void UserAppSM_WindSelect(void)
 {
   u8 u8WMessage[]="windspeed :";
+  //buffer to save windspeed
  static u8 u8WSpeed[]="1";
   while(boolcallonce)
   {
@@ -459,6 +482,9 @@ static void UserAppSM_WindSelect(void)
     LCDMessage(LINE2_START_ADDR,u8WSpeed);
     boolcallonce=FALSE;
   }
+  /*button0 and 1 to change windspeed ----------------
+  button0 raise windspeed and button1 reduce windspeed
+  the speed include 1,2,3*/
   if(WasButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
@@ -494,7 +520,9 @@ static void UserAppSM_WindSelect(void)
       UserApp_StateMachine = UserAppSM_Idle;
     }
   }
-}
+}/*end moudle*/
+
+/*timer moudle*/
 /*------------------------------------------------------*/
 static void UserAppSM_AutoSelect(void)
 {
@@ -538,7 +566,9 @@ static void UserAppSM_AutoSelect(void)
       UserApp_StateMachine = UserAppSM_Idle;
     }
   } 
-}
+}/*end moudle*/
+
+/*turn off all the light */
 /*------------------------------------------------------*/
 static void UserAppSM_SleepSelect(void)
 {
