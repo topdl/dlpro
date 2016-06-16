@@ -164,6 +164,82 @@ State Machine Function Definitions
 /*-------------------------------------------------------------------------------------------------------------------*/
 static void UserAppSM_Idle(void)
 {
+  //---------------------------------
+  //u8envirtemperature[u8tencounter]    now environemnt temperature
+    static u16 u16oneminute=6000;
+    static u8 u8tentimes=0;
+    static u8 u8tencounter=0,u8onecounter=0;
+    static u8 u8nowindoor=12;
+    u16oneminute--;
+   if(airconditionon)
+   {
+    if(u16oneminute==0)
+    {
+      u8onecounter++;      
+      if(u8onecounter==5||u8onecounter==10)
+      {
+        if(u8TransMessage[2]>u8nowindoor)
+        {
+          u8nowindoor++;
+        }
+        else if(u8TransMessage[2]<u8nowindoor)
+        {
+          u8nowindoor--;
+        }
+        if(u8onecounter==10)
+        {
+          u8tencounter++;
+          u8onecounter=0;
+        }
+      }
+      u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
+      u16oneminute=6000;
+      DebugPrintNumber((u32)u8nowindoor);
+      DebugPrintf(u8stringtab);
+      DebugPrintNumber((u32)u8envirtemperature[u8tencounter]);
+      DebugLineFeed();
+    }
+   }
+   else 
+   {
+     if(u16oneminute==0)
+    {
+      u8onecounter++;      
+      if(u8onecounter==5||u8onecounter==10)
+      {
+        if(u8envirtemperature[u8tencounter]>u8nowindoor)
+        {
+          u8nowindoor++;
+        }
+        else if(u8envirtemperature[u8tencounter]<u8nowindoor)
+        {
+          u8nowindoor--;
+        }
+        if(u8onecounter==10)
+        {
+          u8tencounter++;
+          u8onecounter=0;
+        }
+      }
+      u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
+      u16oneminute=6000;
+    }
+   }
+  
+  
+  
+  
+  
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
   //idle state initialization 
   while(boolcallonce)
   {
