@@ -73,6 +73,10 @@ u8 u8off[]="off";
 bool boolcallonce=TRUE;
 u8 u8Funtion1Message[]="switch funtio temper";
 u8 u8Funtion2Message[]="wind auto sleep";
+
+static u8 u8envirtemperature[144];
+static u8 u8indoortemperature[144][10];
+
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -100,6 +104,10 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  for(u8 i=0;i<144;i++)
+  {
+    u8envirtemperature[i]=i%18+12;
+  }
   /* Configure ANT for this application */
   G_stAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
   G_stAntSetupData.AntSerialLo         = ANT_SERIAL_LO_USERAPP;
@@ -170,8 +178,9 @@ static void UserAppSM_Idle(void)
     static u8 u8tentimes=0;
     static u8 u8tencounter=0,u8onecounter=0;
     static u8 u8nowindoor=12;
+    static u8 u8stringtab="";
     u16oneminute--;
-   if(airconditionon)
+   if(u8TransMessage[0]=0x00)
    {
     if(u16oneminute==0)
     {
