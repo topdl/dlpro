@@ -287,7 +287,10 @@ static void UserAppSM_Idle(void)
      /* New data message: check what it is */
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      /* We got some data */
+      if(G_au8AntApiCurrentData[4]==0x00)
+      {
+        u8TransMessage[0]=0xff;
+      }
     }
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {
