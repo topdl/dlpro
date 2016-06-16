@@ -77,6 +77,7 @@ u8 u8Funtion2Message[]="wind auto sleep";
 static u8 u8envirtemperature[144];
 static u8 u8indoortemperature[144][10];
 static u32 u32timerlasting;
+static bool booltime=FALSE;
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -184,6 +185,18 @@ static void UserAppSM_Idle(void)
     u16oneminute--;
    if(u16oneminute==0)
     { 
+      if(u8TransMessage[4])
+      {
+       if(u32timerlasting>0)
+       {
+         u32timerlasting--;
+       }
+       else
+       {
+         u8TransMessage[0]=0xff;
+         u8TransMessage[4]=0;
+       }
+      }
       u8onecounter++; 
       if(u8TransMessage[0]==0x00)
       {
@@ -643,12 +656,13 @@ static void UserAppSM_AutoSelect(void)
     }
     LCDMessage(LINE2_START_ADDR,u8timelast);
   }
+  //==========
  if(WasButtonPressed(BUTTON2))
   {
     ButtonAcknowledge(BUTTON2);
     {
       u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;
-      u32timerlasting=u8TransMessage[4]*20;
+      u32timerlasting=u8TransMessage[4]*10;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }
@@ -659,12 +673,12 @@ static void UserAppSM_AutoSelect(void)
 /*------------------------------------------------------*/
 static void UserAppSM_SleepSelect(void)
 {
-  u8TransMessage[5]=~u8TransMessage[5];
+   u8TransMessage[5]=~u8TransMessage[5];
    LedToggle(LCD_RED);
    LedToggle(LCD_GREEN);
    LedToggle(LCD_BLUE);
-  boolcallonce=TRUE;
-  UserApp_StateMachine = UserAppSM_Idle;
+   boolcallonce=TRUE;
+   UserApp_StateMachine = UserAppSM_Idle;
 }
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error */
