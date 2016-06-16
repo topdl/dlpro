@@ -105,6 +105,7 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  //the temprature of environment
   for(u8 i=0;i<144;i++)
   {
     u8envirtemperature[i]=i%18+12;
@@ -180,11 +181,12 @@ static void UserAppSM_Idle(void)
     static u8 u8tentimes=0;
     static u8 u8tencounter=0,u8onecounter=0;
     static u8 u8nowindoor=12;
-    static u8 u8stringtab[]="\t";
-     
+    static u8 u8stringtab[]="\t";     
     u16oneminute--;
+    /*the temperature simulation  */
    if(u16oneminute==0)
     { 
+      //timer    auto close
       if(u8TransMessage[4])
       {
        if(u32timerlasting>0)
@@ -198,6 +200,7 @@ static void UserAppSM_Idle(void)
        }
       }
       u8onecounter++; 
+      //air conditioner open state 
       if(u8TransMessage[0]==0x00)
       {
         if(u8onecounter==5||u8onecounter==10)
@@ -217,6 +220,7 @@ static void UserAppSM_Idle(void)
          }
        }
       }
+     // air conditioner close state
       else
       {
          if(u8onecounter==5||u8onecounter==10)
