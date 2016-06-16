@@ -76,7 +76,7 @@ u8 u8Funtion2Message[]="wind auto sleep";
 
 static u8 u8envirtemperature[144];
 static u8 u8indoortemperature[144][10];
-
+static u32 u32timerlasting;
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -174,16 +174,25 @@ static void UserAppSM_Idle(void)
 {
   //---------------------------------
   //u8envirtemperature[u8tencounter]    now environemnt temperature
+ 
     static u16 u16oneminute=6000;
     static u8 u8tentimes=0;
     static u8 u8tencounter=0,u8onecounter=0;
     static u8 u8nowindoor=12;
-    static u8 u8stringtab="";
+    static u8 u8stringtab[]="\t";
+     
     u16oneminute--;
-   if(u8TransMessage[0]=0x00)
+   if(u8TransMessage[0]==0x00)
    {
+    
     if(u16oneminute==0)
     {
+      u32timerlasting--;
+    if(u32timerlasting==0)
+    {
+      u8TransMessage[0]=0xff;
+      u8TransMessage[4]=0x00;
+    }
       u8onecounter++;      
       if(u8onecounter==5||u8onecounter==10)
       {
@@ -205,7 +214,14 @@ static void UserAppSM_Idle(void)
       u16oneminute=6000;
       DebugPrintNumber((u32)u8nowindoor);
       DebugPrintf(u8stringtab);
+      if(u8TransMessage[0]=0x00)
+      {
       DebugPrintNumber((u32)u8envirtemperature[u8tencounter]);
+      }
+      else
+      {
+        DebugPrintf(u8off);
+      }
       DebugLineFeed();
     }
    }
@@ -236,17 +252,6 @@ static void UserAppSM_Idle(void)
    }
   
   
-  
-  
-  
-   
-   
-   
-   
-   
-   
-   
-   
    
    
   //idle state initialization 
@@ -658,6 +663,7 @@ static void UserAppSM_AutoSelect(void)
     ButtonAcknowledge(BUTTON2);
     {
       u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;;
+      u32timerlasting=u8TransMessage[4]*20;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }

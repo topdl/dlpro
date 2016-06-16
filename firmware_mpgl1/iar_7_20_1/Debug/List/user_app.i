@@ -17425,6 +17425,10 @@ u8 u8off[]="off";
 bool boolcallonce=TRUE;
 u8 u8Funtion1Message[]="switch funtio temper";
 u8 u8Funtion2Message[]="wind auto sleep";
+
+static u8 u8envirtemperature[144];
+static u8 u8indoortemperature[144][10];
+static u32 u32timerlasting;
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -17452,6 +17456,10 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  for(u8 i=0;i<144;i++)
+  {
+    u8envirtemperature[i]=i%18+12;
+  }
   /* Configure ANT for this application */
   G_stAntSetupData.AntChannel          = (u8)0;
   G_stAntSetupData.AntSerialLo         = (u8)0x6B;
@@ -17516,6 +17524,88 @@ State Machine Function Definitions
 /*-------------------------------------------------------------------------------------------------------------------*/
 static void UserAppSM_Idle(void)
 {
+  //---------------------------------
+  //u8envirtemperature[u8tencounter]    now environemnt temperature
+ 
+    static u16 u16oneminute=6000;
+    static u8 u8tentimes=0;
+    static u8 u8tencounter=0,u8onecounter=0;
+    static u8 u8nowindoor=12;
+    static u8 u8stringtab[]="\t";
+     
+    u16oneminute--;
+   if(u8TransMessage[0]==0x00)
+   {
+    
+    if(u16oneminute==0)
+    {
+      u32timerlasting--;
+    if(u32timerlasting==0)
+    {
+      u8TransMessage[0]=0xff;
+      u8TransMessage[4]=0x00;
+    }
+      u8onecounter++;      
+      if(u8onecounter==5||u8onecounter==10)
+      {
+        if(u8TransMessage[2]>u8nowindoor)
+        {
+          u8nowindoor++;
+        }
+        else if(u8TransMessage[2]<u8nowindoor)
+        {
+          u8nowindoor--;
+        }
+        if(u8onecounter==10)
+        {
+          u8tencounter++;
+          u8onecounter=0;
+        }
+      }
+      u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
+      u16oneminute=6000;
+      DebugPrintNumber((u32)u8nowindoor);
+      DebugPrintf(u8stringtab);
+      if(u8TransMessage[0]=0x00)
+      {
+      DebugPrintNumber((u32)u8envirtemperature[u8tencounter]);
+      }
+      else
+      {
+        DebugPrintf(u8off);
+      }
+      DebugLineFeed();
+    }
+   }
+   else 
+   {
+     if(u16oneminute==0)
+    {
+      u8onecounter++;      
+      if(u8onecounter==5||u8onecounter==10)
+      {
+        if(u8envirtemperature[u8tencounter]>u8nowindoor)
+        {
+          u8nowindoor++;
+        }
+        else if(u8envirtemperature[u8tencounter]<u8nowindoor)
+        {
+          u8nowindoor--;
+        }
+        if(u8onecounter==10)
+        {
+          u8tencounter++;
+          u8onecounter=0;
+        }
+      }
+      u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
+      u16oneminute=6000;
+    }
+   }
+  
+  
+   
+   
   //idle state initialization 
   while(boolcallonce)
   {
@@ -17639,7 +17729,10 @@ static void UserAppSM_Idle(void)
      /* New data message: check what it is */
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      /* We got some data */
+      if(G_au8AntApiCurrentData[4]==0x00)
+      {
+        u8TransMessage[0]=0xff;
+      }
     }
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {
@@ -17873,7 +17966,7 @@ static void UserAppSM_WindSelect(void)
   {
     ButtonAcknowledge((u32)2);
     {
-      u8TransMessage[3]=u8WindSpeed[0];
+      u8TransMessage[3]=u8WindSpeed[0]-0x30;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }
@@ -17922,6 +18015,7 @@ static void UserAppSM_AutoSelect(void)
     ButtonAcknowledge((u32)2);
     {
       u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;;
+      u32timerlasting=u8TransMessage[4]*20;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
     }
