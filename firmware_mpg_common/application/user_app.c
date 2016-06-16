@@ -182,41 +182,56 @@ static void UserAppSM_Idle(void)
     static u8 u8stringtab[]="\t";
      
     u16oneminute--;
-   if(u8TransMessage[0]==0x00)
-   {
-    
-    if(u16oneminute==0)
-    {
-      u32timerlasting--;
-    if(u32timerlasting==0)
-    {
-      u8TransMessage[0]=0xff;
-      u8TransMessage[4]=0x00;
-    }
-      u8onecounter++;      
-      if(u8onecounter==5||u8onecounter==10)
+   if(u16oneminute==0)
+    { 
+      u8onecounter++; 
+      if(u8TransMessage[0]==0x00)
       {
-        if(u8TransMessage[2]>u8nowindoor)
-        {
+        if(u8onecounter==5||u8onecounter==10)
+       {
+         if(u8TransMessage[2]>u8nowindoor)
+         {
           u8nowindoor++;
-        }
-        else if(u8TransMessage[2]<u8nowindoor)
-        {
+         }
+         else if(u8TransMessage[2]<u8nowindoor)
+         {
           u8nowindoor--;
-        }
-        if(u8onecounter==10)
-        {
+         }
+         if(u8onecounter==10)
+         {
           u8tencounter++;
           u8onecounter=0;
+         }
+       }
+      }
+      else
+      {
+         if(u8onecounter==5||u8onecounter==10)
+        {
+         if(u8envirtemperature[u8tencounter]>u8nowindoor)
+         {
+           u8nowindoor++;
+         }
+         else if(u8envirtemperature[u8tencounter]<u8nowindoor)
+         {
+           u8nowindoor--;
+         }
+         if(u8onecounter==10)
+         {
+           u8tencounter++;
+           u8onecounter=0;
+         }
         }
       }
       u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
       u16oneminute=6000;
       DebugPrintNumber((u32)u8nowindoor);
       DebugPrintf(u8stringtab);
-      if(u8TransMessage[0]=0x00)
-      {
       DebugPrintNumber((u32)u8envirtemperature[u8tencounter]);
+      DebugPrintf(u8stringtab);
+      if(u8TransMessage[0]==0x00)
+      {
+      DebugPrintNumber((u32)u8TransMessage[2]);
       }
       else
       {
@@ -224,36 +239,6 @@ static void UserAppSM_Idle(void)
       }
       DebugLineFeed();
     }
-   }
-   else 
-   {
-     if(u16oneminute==0)
-    {
-      u8onecounter++;      
-      if(u8onecounter==5||u8onecounter==10)
-      {
-        if(u8envirtemperature[u8tencounter]>u8nowindoor)
-        {
-          u8nowindoor++;
-        }
-        else if(u8envirtemperature[u8tencounter]<u8nowindoor)
-        {
-          u8nowindoor--;
-        }
-        if(u8onecounter==10)
-        {
-          u8tencounter++;
-          u8onecounter=0;
-        }
-      }
-      u8indoortemperature[u8tencounter][u8tencounter]=u8nowindoor;
-      u16oneminute=6000;
-    }
-   }
-  
-  
-   
-   
   //idle state initialization 
   while(boolcallonce)
   {
@@ -662,7 +647,7 @@ static void UserAppSM_AutoSelect(void)
   {
     ButtonAcknowledge(BUTTON2);
     {
-      u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;;
+      u8TransMessage[4]=(u8timelast[0]-0x30)*10+u8timelast[1]-0x30;
       u32timerlasting=u8TransMessage[4]*20;
       boolcallonce=TRUE;
       UserApp_StateMachine = UserAppSM_Idle;
